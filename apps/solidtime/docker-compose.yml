@@ -51,6 +51,7 @@ services:
     user: "1000:1000"
     environment:
       CONTAINER_MODE: worker
+      WORKER_COMMAND: "php /var/www/html/artisan queue:work --sleep=3 --tries=3"
     env_file:
       - .env
     volumes:
