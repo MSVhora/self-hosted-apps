@@ -2,27 +2,46 @@
 
 set -euo pipefail
 
-# Default configuration
-DOMAIN="${1:-time.picmix.in}"
-UPSTREAM_PORT="${2:-8000}"
-UPSTREAM_HOST="127.0.0.1"
-EMAIL="${3:-}"
-
-# Check for root/sudo
+# Ensure script is running as root/sudo
 if [ "$(id -u)" -ne 0 ]; then
     echo "Error: This script must be run as root or with sudo." >&2
     exit 1
 fi
 
+DOMAIN="${1:-}"
+UPSTREAM_PORT="${2:-}"
+EMAIL="${3:-}"
+
+# Interactive prompts if arguments are not passed
+if [ -z "${DOMAIN}" ]; then
+    read -rp "Enter domain name for reverse proxy (e.g., tools.yourdomain.com): " DOMAIN
+fi
+
+if [ -z "${DOMAIN}" ]; then
+    echo "Error: Domain name is required." >&2
+    exit 1
+fi
+
+if [ -z "${UPSTREAM_PORT}" ]; then
+    read -rp "Enter upstream port to forward to (default: 8080): " UPSTREAM_PORT
+    UPSTREAM_PORT="${UPSTREAM_PORT:-8080}"
+fi
+
+UPSTREAM_HOST="127.0.0.1"
+
 echo "=========================================================="
-echo " Setting up Nginx Reverse Proxy & SSL for: ${DOMAIN}"
-echo " Upstream Target: http://${UPSTREAM_HOST}:${UPSTREAM_PORT}"
+echo " Setting up Nginx Reverse Proxy & SSL"
+echo " Domain:        ${DOMAIN}"
+echo " Upstream:      http://${UPSTREAM_HOST}:${UPSTREAM_PORT}"
+if [ -n "${EMAIL}" ]; then
+    echo " Certbot Email: ${EMAIL}"
+fi
 echo "=========================================================="
 
 # 1. Verify dependencies
 for cmd in nginx certbot; do
     if ! command -v "${cmd}" >/dev/null 2>&1; then
-        echo "Error: ${cmd} is not installed. Please run ./scripts/install-core-stack.sh first." >&2
+        echo "Error: '${cmd}' is not installed. Please run ./scripts/install-core-stack.sh first." >&2
         exit 1
     fi
 done
@@ -31,7 +50,7 @@ done
 CONFIG_AVAILABLE="/etc/nginx/sites-available/${DOMAIN}.conf"
 CONFIG_ENABLED="/etc/nginx/sites-enabled/${DOMAIN}.conf"
 
-echo "[1/4] Generating Nginx server block at ${CONFIG_AVAILABLE}..."
+echo "[1/4] Generating Nginx configuration at ${CONFIG_AVAILABLE}..."
 
 cat > "${CONFIG_AVAILABLE}" <<EOF
 server {
@@ -49,7 +68,7 @@ server {
         proxy_set_header X-Forwarded-Host \$host;
         proxy_set_header X-Forwarded-Port \$server_port;
 
-        # WebSocket support
+        # WebSocket & HTTP/1.1 support
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -64,7 +83,7 @@ EOF
 echo "[2/4] Enabling site in Nginx..."
 ln -sf "${CONFIG_AVAILABLE}" "${CONFIG_ENABLED}"
 
-# Test Nginx syntax
+# Test and reload Nginx
 echo "[3/4] Testing and reloading Nginx configuration..."
 nginx -t
 systemctl reload nginx
@@ -83,6 +102,6 @@ fi
 certbot "${CERTBOT_ARGS[@]}"
 
 echo "=========================================================="
-echo " SSL & Reverse Proxy Setup Successful!"
-echo " Domain: https://${DOMAIN}"
+echo " SSL & Reverse Proxy Setup Complete!"
+echo " Live at: https://${DOMAIN}"
 echo "=========================================================="

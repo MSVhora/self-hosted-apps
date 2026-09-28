@@ -1,0 +1,20 @@
+services:
+  it-tools:
+    image: corentinth/it-tools:${IT_TOOLS_IMAGE_TAG:-latest}
+    container_name: it-tools
+    restart: unless-stopped
+    ports:
+      - "${FORWARD_APP_PORT:-8080}:80"
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:80/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - it-tools-network
+
+networks:
+  it-tools-network:
+    driver: bridge

@@ -4,85 +4,137 @@ set -euo pipefail
 
 # Ensure script is running as root
 if [ "$(id -u)" -ne 0 ]; then
-    echo "Error: This script must be run as root." >&2
+    echo "Error: This script must be run as root or with sudo." >&2
     exit 1
 fi
 
-DOMAIN="time.picmix.in"
-EMAIL="${1:-}"
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-SOLIDTIME_DIR="${REPO_ROOT}/apps/solidtime"
+
+# Arguments / Flags defaults
+APPS_TO_INSTALL=""
+SOLIDTIME_DOMAIN=""
+IT_TOOLS_DOMAIN=""
+EMAIL=""
+
+# Parse command line flags
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --apps)
+            APPS_TO_INSTALL="$2"
+            shift 2
+            ;;
+        --solidtime-domain)
+            SOLIDTIME_DOMAIN="$2"
+            shift 2
+            ;;
+        --it-tools-domain|--it-domain)
+            IT_TOOLS_DOMAIN="$2"
+            shift 2
+            ;;
+        --email)
+            EMAIL="$2"
+            shift 2
+            ;;
+        -h|--help)
+            echo "Usage: sudo $0 [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  --apps <list>             Comma-separated list of apps to install ('all', 'solidtime', 'it-tools', 'none')"
+            echo "  --solidtime-domain <dom>  Domain name for Solidtime (e.g., time.picmix.in)"
+            echo "  --it-tools-domain <dom>   Domain name for IT-Tools (e.g., tools.picmix.in)"
+            echo "  --email <email>           Email address for Let's Encrypt / Certbot SSL registration"
+            echo "  -h, --help                Show this help message"
+            exit 0
+            ;;
+        *)
+            # Backward compatibility: First positional arg treated as email if not flag
+            if [ -z "${EMAIL}" ] && [[ "$1" == *"@"* ]]; then
+                EMAIL="$1"
+            fi
+            shift
+            ;;
+    esac
+done
 
 echo "=========================================================="
-echo " Starting Full Server Provisioning & Solidtime Setup"
-echo " Target Domain: ${DOMAIN}"
+echo " Server Provisioning & Application Bootstrap"
 echo "=========================================================="
 
 # 1. Setup 8GB Swap
 echo ""
-echo ">>> [Step 1/5] Setting up 8GB Swap Memory..."
+echo ">>> [Step 1/3] Setting up Swap Memory..."
 bash "${SCRIPT_DIR}/setup-swap.sh"
 
 # 2. Install Core Stack (Nginx, Docker CE, Docker Compose, Certbot)
 echo ""
-echo ">>> [Step 2/5] Installing Core Packages (Docker, Nginx, Certbot)..."
+echo ">>> [Step 2/3] Installing Core Stack (Docker, Nginx, Certbot)..."
 bash "${SCRIPT_DIR}/install-core-stack.sh"
 
-# Ensure docker service is running
 systemctl start docker
 
-# 3. Configure Solidtime Application
-echo ""
-echo ">>> [Step 3/5] Configuring Solidtime Environment..."
-cd "${SOLIDTIME_DIR}"
+# 3. Interactive App Selection (if --apps was not specified via CLI)
+if [ -z "${APPS_TO_INSTALL}" ]; then
+    if [ -t 0 ]; then
+        echo ""
+        echo "=========================================================="
+        echo " Select Applications to Deploy:"
+        echo "=========================================================="
+        echo " 1) All Apps (Solidtime + IT-Tools)"
+        echo " 2) Solidtime (Time tracking & management)"
+        echo " 3) IT-Tools (Developer & IT web utility suite)"
+        echo " 4) None (Core server stack only)"
+        echo "=========================================================="
+        read -rp "Enter choice [1-4] (default: 1): " APP_CHOICE
+        APP_CHOICE="${APP_CHOICE:-1}"
 
-if [ ! -f ".env" ]; then
-    cp .env.example .env
-    # Generate random secure DB password
-    RANDOM_DB_PASS="$(openssl rand -hex 16)"
-    sed -i "s/change_this_secure_database_password/${RANDOM_DB_PASS}/g" .env
-    echo "Generated secure DB_PASSWORD in .env"
+        case "${APP_CHOICE}" in
+            1) APPS_TO_INSTALL="solidtime,it-tools" ;;
+            2) APPS_TO_INSTALL="solidtime" ;;
+            3) APPS_TO_INSTALL="it-tools" ;;
+            4) APPS_TO_INSTALL="none" ;;
+            *) echo "Invalid choice, defaulting to all."; APPS_TO_INSTALL="solidtime,it-tools" ;;
+        esac
+    else
+        APPS_TO_INSTALL="solidtime,it-tools"
+    fi
 fi
 
-# Ensure data directories exist with proper write permissions for container user (1000:1000)
-mkdir -p data/logs data/app-storage
-chown -R 1000:1000 data/ || true
-chmod -R 777 data/ || true
-
-# 4. Generate Application & Passport Keys (Only if not already generated)
 echo ""
-echo ">>> [Step 4/5] Checking Application & OAuth Keys..."
-if grep -q "^APP_KEY=base64:" .env 2>/dev/null; then
-    echo "Application keys already configured in .env. Skipping key generation."
-else
-    echo "Generating and injecting Application & OAuth Keys into .env..."
-    sed -i '/^APP_KEY=/d; /^PASSPORT_PRIVATE_KEY=/d; /^PASSPORT_PUBLIC_KEY=/d' .env
-    echo "" >> .env
-    echo "# --- Auto-generated Encryption Keys ---" >> .env
-    docker run --rm solidtime/solidtime:latest php artisan self-host:generate-keys >> .env
-    echo "Keys successfully written to .env."
+echo ">>> [Step 3/3] Deploying Selected Applications: ${APPS_TO_INSTALL}"
+
+# Deploy Solidtime if selected
+if [[ "${APPS_TO_INSTALL}" == *"solidtime"* ]] || [[ "${APPS_TO_INSTALL}" == "all" ]]; then
+    echo ""
+    echo "----------------------------------------------------------"
+    echo " Deploying Solidtime..."
+    echo "----------------------------------------------------------"
+    if [ -z "${SOLIDTIME_DOMAIN}" ] && [ -t 0 ]; then
+        read -rp "Enter domain for Solidtime (e.g. time.picmix.in, or press Enter to skip SSL): " SOLIDTIME_DOMAIN
+    fi
+    bash "${SCRIPT_DIR}/setup-solidtime.sh" "${SOLIDTIME_DOMAIN}" "${EMAIL}"
 fi
 
-# Run database migrations
-echo "Running Database Migrations..."
-docker compose run --rm scheduler php artisan migrate --force
-
-# Launch application stack
-echo "Starting Docker Compose services..."
-docker compose up -d
-
-# 5. Configure Nginx and SSL
-echo ""
-echo ">>> [Step 5/5] Configuring Nginx Reverse Proxy & SSL for ${DOMAIN}..."
-if [ -n "${EMAIL}" ]; then
-    bash "${SCRIPT_DIR}/setup-nginx-domain.sh" "${DOMAIN}" 8000 "${EMAIL}"
-else
-    bash "${SCRIPT_DIR}/setup-nginx-domain.sh" "${DOMAIN}" 8000
+# Deploy IT-Tools if selected
+if [[ "${APPS_TO_INSTALL}" == *"it-tools"* ]] || [[ "${APPS_TO_INSTALL}" == "all" ]]; then
+    echo ""
+    echo "----------------------------------------------------------"
+    echo " Deploying IT-Tools..."
+    echo "----------------------------------------------------------"
+    if [ -z "${IT_TOOLS_DOMAIN}" ] && [ -t 0 ]; then
+        read -rp "Enter domain for IT-Tools (e.g. tools.picmix.in, or press Enter to skip SSL): " IT_TOOLS_DOMAIN
+    fi
+    bash "${SCRIPT_DIR}/setup-it-tools.sh" "${IT_TOOLS_DOMAIN}" "${EMAIL}"
 fi
 
+echo ""
 echo "=========================================================="
-echo " Server Provisioning Complete!"
-echo " Solidtime is live at: https://${DOMAIN}"
+echo " Bootstrap Process Completed Successfully!"
+echo "=========================================================="
+if [[ "${APPS_TO_INSTALL}" == *"solidtime"* ]] && [ -n "${SOLIDTIME_DOMAIN}" ]; then
+    echo " Solidtime: https://${SOLIDTIME_DOMAIN}"
+fi
+if [[ "${APPS_TO_INSTALL}" == *"it-tools"* ]] && [ -n "${IT_TOOLS_DOMAIN}" ]; then
+    echo " IT-Tools:  https://${IT_TOOLS_DOMAIN}"
+fi
 echo "=========================================================="
