@@ -46,10 +46,20 @@ if [ ! -f ".env" ]; then
     echo "Generated secure DB_PASSWORD in .env"
 fi
 
-# 4. Generate Application & Passport Keys
+# Ensure data directories exist with proper write permissions for container user (1000:1000)
+mkdir -p data/logs data/app-storage
+chown -R 1000:1000 data/ || true
+chmod -R 777 data/ || true
+
+# 4. Generate Application & Passport Keys (Only if not already generated)
 echo ""
-echo ">>> [Step 4/5] Generating Application & OAuth Keys..."
-docker compose run --rm scheduler php artisan self-host:generate-keys || true
+echo ">>> [Step 4/5] Checking Application & OAuth Keys..."
+if grep -q "^APP_KEY=base64:" .env 2>/dev/null; then
+    echo "Application keys already configured in .env. Skipping key generation."
+else
+    echo "Generating Application & OAuth Keys..."
+    docker compose run --rm scheduler php artisan self-host:generate-keys || true
+fi
 
 # Run database migrations
 echo "Running Database Migrations..."
