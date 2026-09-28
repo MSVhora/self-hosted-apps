@@ -1,7 +1,10 @@
 # Environment and secrets
 .env
 .env.*
-!.env.example
+.env.local
+**/.env
+**/.env.*
+!**/.env.example
 *.pem
 *.key
 *.crt
@@ -10,10 +13,15 @@ secrets/
 
 # Data and Persistent Storage
 data/
+**/data/
 storage/
+**/storage/
 volumes/
+**/volumes/
 backups/
+**/backups/
 *.log
+**/logs/
 
 # OS & Editor files
 .DS_Store

@@ -1,0 +1,90 @@
+services:
+  app:
+    image: solidtime/solidtime:${SOLIDTIME_IMAGE_TAG:-latest}
+    container_name: solidtime-app
+    restart: unless-stopped
+    user: "1000:1000"
+    ports:
+      - "${FORWARD_APP_PORT:-8000}:8000"
+    environment:
+      CONTAINER_MODE: http
+    env_file:
+      - .env
+    volumes:
+      - app-storage:/var/www/html/storage
+      - ./data/app-storage:/var/www/html/storage/app
+      - ./data/logs:/var/www/html/storage/logs
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/health-check/up"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - solidtime-network
+
+  scheduler:
+    image: solidtime/solidtime:${SOLIDTIME_IMAGE_TAG:-latest}
+    container_name: solidtime-scheduler
+    restart: unless-stopped
+    user: "1000:1000"
+    environment:
+      CONTAINER_MODE: scheduler
+    env_file:
+      - .env
+    volumes:
+      - app-storage:/var/www/html/storage
+      - ./data/app-storage:/var/www/html/storage/app
+      - ./data/logs:/var/www/html/storage/logs
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - solidtime-network
+
+  worker:
+    image: solidtime/solidtime:${SOLIDTIME_IMAGE_TAG:-latest}
+    container_name: solidtime-worker
+    restart: unless-stopped
+    user: "1000:1000"
+    environment:
+      CONTAINER_MODE: worker
+    env_file:
+      - .env
+    volumes:
+      - app-storage:/var/www/html/storage
+      - ./data/app-storage:/var/www/html/storage/app
+      - ./data/logs:/var/www/html/storage/logs
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - solidtime-network
+
+  database:
+    image: postgres:16-alpine
+    container_name: solidtime-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-solidtime}
+      POSTGRES_USER: ${DB_USERNAME:-solidtime}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-solidtime} -d ${DB_DATABASE:-solidtime}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - solidtime-network
+
+volumes:
+  app-storage:
+  db-data:
+
+networks:
+  solidtime-network:
+    driver: bridge
