@@ -57,8 +57,12 @@ echo ">>> [Step 4/5] Checking Application & OAuth Keys..."
 if grep -q "^APP_KEY=base64:" .env 2>/dev/null; then
     echo "Application keys already configured in .env. Skipping key generation."
 else
-    echo "Generating Application & OAuth Keys..."
-    docker compose run --rm scheduler php artisan self-host:generate-keys || true
+    echo "Generating and injecting Application & OAuth Keys into .env..."
+    sed -i '/^APP_KEY=/d; /^PASSPORT_PRIVATE_KEY=/d; /^PASSPORT_PUBLIC_KEY=/d' .env
+    echo "" >> .env
+    echo "# --- Auto-generated Encryption Keys ---" >> .env
+    docker run --rm solidtime/solidtime:latest php artisan self-host:generate-keys >> .env
+    echo "Keys successfully written to .env."
 fi
 
 # Run database migrations
