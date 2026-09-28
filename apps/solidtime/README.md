@@ -48,12 +48,40 @@ docker compose up -d
    sudo cp nginx-solidtime.conf.example /etc/nginx/sites-available/solidtime.conf
    sudo ln -s /etc/nginx/sites-available/solidtime.conf /etc/nginx/sites-enabled/
    ```
-2. Replace `time.yourdomain.com` in `/etc/nginx/sites-available/solidtime.conf` with your actual domain.
+2. Replace `time.picmix.in` in `/etc/nginx/sites-available/solidtime.conf` with your actual domain.
 3. Test and reload Nginx:
    ```bash
    sudo nginx -t && sudo systemctl reload nginx
    ```
 4. Generate the SSL certificate using Certbot:
    ```bash
-   sudo certbot --nginx -d time.yourdomain.com
+   sudo certbot --nginx -d time.picmix.in
    ```
+
+---
+
+## Creating the Initial Admin User
+
+### Method A: Create User via CLI (Recommended)
+Run the following artisan command:
+```bash
+docker compose exec scheduler php artisan admin:user:create "Your Name" "your-email@example.com" --verify-email
+```
+This will print a generated password for your initial login.
+
+To grant full Super Admin access, add your email to `.env`:
+```env
+SUPER_ADMINS="your-email@example.com"
+```
+and restart containers: `docker compose down && docker compose up -d`.
+
+### Method B: Enable Web Registration Form
+In `.env`, set:
+```env
+APP_ENABLE_REGISTRATION=true
+```
+Then recreate containers:
+```bash
+docker compose down && docker compose up -d
+```
+You can now register directly at `https://time.picmix.in/register`.
