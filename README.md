@@ -6,6 +6,7 @@ A repository for managing Docker Compose stacks, Nginx reverse proxy configurati
 
 ```text
 ├── apps/
+│   ├── houm/                 # HOUM company website (Next.js image from GHCR)
 │   ├── it-tools/             # IT-Tools web utility suite (Text diff, hashes, converters, etc.)
 │   └── solidtime/            # Solidtime open-source time tracking stack
 ├── scripts/
@@ -14,7 +15,8 @@ A repository for managing Docker Compose stacks, Nginx reverse proxy configurati
 │   ├── setup-swap.sh         # Allocates and tunes 8GB swap memory
 │   ├── setup-nginx-domain.sh # Configures Nginx reverse proxy block & Let's Encrypt SSL
 │   ├── setup-solidtime.sh    # Automated Solidtime deployer
-│   └── setup-it-tools.sh     # Automated IT-Tools deployer
+│   ├── setup-it-tools.sh     # Automated IT-Tools deployer
+│   └── setup-houm.sh         # Automated HOUM website deployer
 ├── .gitignore
 └── README.md
 ```
@@ -37,6 +39,7 @@ sudo ./scripts/bootstrap-server.sh \
   --apps all \
   --solidtime-domain time.picmix.in \
   --it-tools-domain tools.picmix.in \
+  --houm-domain houm.picmix.in \
   --email your-email@example.com
 
 # Install only IT-Tools
@@ -53,6 +56,11 @@ sudo ./scripts/bootstrap-server.sh \
 ### Deploy IT-Tools
 ```bash
 sudo ./scripts/setup-it-tools.sh tools.yourdomain.com your-email@example.com
+```
+
+### Deploy HOUM
+```bash
+sudo ./scripts/setup-houm.sh houm.yourdomain.com your-email@example.com
 ```
 
 ### Deploy Solidtime

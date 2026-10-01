@@ -1,0 +1,20 @@
+services:
+  houm:
+    image: ghcr.io/msvhora/houm-web:${HOUM_IMAGE_TAG:-latest}
+    container_name: houm
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${FORWARD_APP_PORT:-3000}:3000"
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - houm-network
+
+networks:
+  houm-network:
+    driver: bridge
