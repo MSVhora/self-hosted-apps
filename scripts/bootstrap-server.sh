@@ -16,6 +16,7 @@ APPS_TO_INSTALL=""
 SOLIDTIME_DOMAIN=""
 IT_TOOLS_DOMAIN=""
 HOUM_DOMAIN=""
+LIFE_GAME_DOMAIN=""
 EMAIL=""
 
 # Parse command line flags
@@ -37,6 +38,10 @@ while [[ $# -gt 0 ]]; do
             HOUM_DOMAIN="$2"
             shift 2
             ;;
+        --life-game-domain)
+            LIFE_GAME_DOMAIN="$2"
+            shift 2
+            ;;
         --email)
             EMAIL="$2"
             shift 2
@@ -45,10 +50,11 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: sudo $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --apps <list>             Comma-separated list of apps to install ('all', 'solidtime', 'it-tools', 'houm', 'none')"
+            echo "  --apps <list>             Comma-separated list of apps to install ('all', 'solidtime', 'it-tools', 'houm', 'life-game', 'none')"
             echo "  --solidtime-domain <dom>  Domain name for Solidtime (e.g., time.picmix.in)"
             echo "  --it-tools-domain <dom>   Domain name for IT-Tools (e.g., tools.picmix.in)"
             echo "  --houm-domain <dom>       Domain name for the HOUM website (e.g., houm.picmix.in)"
+            echo "  --life-game-domain <dom>  Domain name for Life Game (e.g., life.picmix.in)"
             echo "  --email <email>           Email address for Let's Encrypt / Certbot SSL registration"
             echo "  -h, --help                Show this help message"
             exit 0
@@ -86,25 +92,27 @@ if [ -z "${APPS_TO_INSTALL}" ]; then
         echo "=========================================================="
         echo " Select Applications to Deploy:"
         echo "=========================================================="
-        echo " 1) All Apps (Solidtime + IT-Tools + HOUM)"
+        echo " 1) All Apps (Solidtime + IT-Tools + HOUM + Life Game)"
         echo " 2) Solidtime (Time tracking & management)"
         echo " 3) IT-Tools (Developer & IT web utility suite)"
         echo " 4) HOUM (Company website)"
-        echo " 5) None (Core server stack only)"
+        echo " 5) Life Game (Daily deadline tracker)"
+        echo " 6) None (Core server stack only)"
         echo "=========================================================="
-        read -rp "Enter choice [1-5] (default: 1): " APP_CHOICE
+        read -rp "Enter choice [1-6] (default: 1): " APP_CHOICE
         APP_CHOICE="${APP_CHOICE:-1}"
 
         case "${APP_CHOICE}" in
-            1) APPS_TO_INSTALL="solidtime,it-tools,houm" ;;
+            1) APPS_TO_INSTALL="solidtime,it-tools,houm,life-game" ;;
             2) APPS_TO_INSTALL="solidtime" ;;
             3) APPS_TO_INSTALL="it-tools" ;;
             4) APPS_TO_INSTALL="houm" ;;
-            5) APPS_TO_INSTALL="none" ;;
-            *) echo "Invalid choice, defaulting to all."; APPS_TO_INSTALL="solidtime,it-tools,houm" ;;
+            5) APPS_TO_INSTALL="life-game" ;;
+            6) APPS_TO_INSTALL="none" ;;
+            *) echo "Invalid choice, defaulting to all."; APPS_TO_INSTALL="solidtime,it-tools,houm,life-game" ;;
         esac
     else
-        APPS_TO_INSTALL="solidtime,it-tools,houm"
+        APPS_TO_INSTALL="solidtime,it-tools,houm,life-game"
     fi
 fi
 
@@ -147,6 +155,18 @@ if [[ "${APPS_TO_INSTALL}" == *"houm"* ]] || [[ "${APPS_TO_INSTALL}" == "all" ]]
     bash "${SCRIPT_DIR}/setup-houm.sh" "${HOUM_DOMAIN}" "${EMAIL}"
 fi
 
+# Deploy Life Game if selected
+if [[ "${APPS_TO_INSTALL}" == *"life-game"* ]] || [[ "${APPS_TO_INSTALL}" == "all" ]]; then
+    echo ""
+    echo "----------------------------------------------------------"
+    echo " Deploying Life Game..."
+    echo "----------------------------------------------------------"
+    if [ -z "${LIFE_GAME_DOMAIN}" ] && [ -t 0 ]; then
+        read -rp "Enter domain for Life Game (e.g. life.picmix.in, or press Enter to skip SSL): " LIFE_GAME_DOMAIN
+    fi
+    bash "${SCRIPT_DIR}/setup-life-game.sh" "${LIFE_GAME_DOMAIN}" "${EMAIL}"
+fi
+
 echo ""
 echo "=========================================================="
 echo " Bootstrap Process Completed Successfully!"
@@ -159,5 +179,8 @@ if [[ "${APPS_TO_INSTALL}" == *"it-tools"* ]] && [ -n "${IT_TOOLS_DOMAIN}" ]; th
 fi
 if [[ "${APPS_TO_INSTALL}" == *"houm"* ]] && [ -n "${HOUM_DOMAIN}" ]; then
     echo " HOUM:      https://${HOUM_DOMAIN}"
+fi
+if [[ "${APPS_TO_INSTALL}" == *"life-game"* ]] && [ -n "${LIFE_GAME_DOMAIN}" ]; then
+    echo " Life Game: https://${LIFE_GAME_DOMAIN}"
 fi
 echo "=========================================================="

@@ -30,3 +30,6 @@ Thumbs.db
 .vscode/
 *.swp
 *~
+
+# Life Game personal settings (client rates etc.) and local database dumps
+apps/life-game/config/*.local.*
