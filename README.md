@@ -6,6 +6,7 @@ A repository for managing Docker Compose stacks, Nginx reverse proxy configurati
 
 ```text
 ├── apps/
+│   ├── salesix/              # Salesix voice-agent platform (sandbox; GHCR images, host nginx)
 │   ├── life-game/            # Life Game daily deadline tracker (image from GHCR + Postgres)
 │   ├── it-tools/             # IT-Tools web utility suite (Text diff, hashes, converters, etc.)
 │   └── solidtime/            # Solidtime open-source time tracking stack
@@ -16,7 +17,8 @@ A repository for managing Docker Compose stacks, Nginx reverse proxy configurati
 │   ├── setup-nginx-domain.sh # Configures Nginx reverse proxy block & Let's Encrypt SSL
 │   ├── setup-solidtime.sh    # Automated Solidtime deployer
 │   ├── setup-it-tools.sh     # Automated IT-Tools deployer
-│   └── setup-life-game.sh    # Automated Life Game deployer
+│   ├── setup-life-game.sh    # Automated Life Game deployer
+│   └── setup-salesix.sh      # Automated Salesix deployer
 ├── .gitignore
 └── README.md
 ```
@@ -61,6 +63,12 @@ sudo ./scripts/setup-it-tools.sh tools.yourdomain.com your-email@example.com
 ### Deploy Life Game
 ```bash
 sudo ./scripts/setup-life-game.sh life.yourdomain.com your-email@example.com
+```
+
+### Deploy Salesix
+See [apps/salesix/README.md](apps/salesix/README.md) (env files and DNS first).
+```bash
+sudo ./scripts/setup-salesix.sh your-email@example.com
 ```
 
 ### Deploy Solidtime

@@ -33,3 +33,7 @@ Thumbs.db
 
 # Life Game personal settings (client rates etc.) and local database dumps
 apps/life-game/config/*.local.*
+
+# Salesix real env files and build settings
+apps/salesix/build.env
+apps/salesix/*.env

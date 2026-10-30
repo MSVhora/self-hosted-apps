@@ -45,7 +45,7 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: sudo $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --apps <list>             Comma-separated list of apps to install ('all', 'solidtime', 'it-tools', 'life-game', 'none')"
+            echo "  --apps <list>             Comma-separated list of apps to install ('all', 'solidtime', 'it-tools', 'life-game', 'salesix', 'none')"
             echo "  --solidtime-domain <dom>  Domain name for Solidtime (e.g., time.picmix.in)"
             echo "  --it-tools-domain <dom>   Domain name for IT-Tools (e.g., tools.picmix.in)"
             echo "  --life-game-domain <dom>  Domain name for Life Game (e.g., life.picmix.in)"
@@ -90,9 +90,10 @@ if [ -z "${APPS_TO_INSTALL}" ]; then
         echo " 2) Solidtime (Time tracking & management)"
         echo " 3) IT-Tools (Developer & IT web utility suite)"
         echo " 4) Life Game (Daily deadline tracker)"
-        echo " 5) None (Core server stack only)"
+        echo " 5) Salesix (needs env files, see apps/salesix/README.md)"
+        echo " 6) None (Core server stack only)"
         echo "=========================================================="
-        read -rp "Enter choice [1-5] (default: 1): " APP_CHOICE
+        read -rp "Enter choice [1-6] (default: 1): " APP_CHOICE
         APP_CHOICE="${APP_CHOICE:-1}"
 
         case "${APP_CHOICE}" in
@@ -100,7 +101,8 @@ if [ -z "${APPS_TO_INSTALL}" ]; then
             2) APPS_TO_INSTALL="solidtime" ;;
             3) APPS_TO_INSTALL="it-tools" ;;
             4) APPS_TO_INSTALL="life-game" ;;
-            5) APPS_TO_INSTALL="none" ;;
+            5) APPS_TO_INSTALL="salesix" ;;
+            6) APPS_TO_INSTALL="none" ;;
             *) echo "Invalid choice, defaulting to all."; APPS_TO_INSTALL="solidtime,it-tools,life-game" ;;
         esac
     else
@@ -145,6 +147,15 @@ if [[ "${APPS_TO_INSTALL}" == *"life-game"* ]] || [[ "${APPS_TO_INSTALL}" == "al
         read -rp "Enter domain for Life Game (e.g. life.picmix.in, or press Enter to skip SSL): " LIFE_GAME_DOMAIN
     fi
     bash "${SCRIPT_DIR}/setup-life-game.sh" "${LIFE_GAME_DOMAIN}" "${EMAIL}"
+fi
+
+# Deploy Salesix only when asked for explicitly (not part of "all"): it needs hand-made env files
+if [[ "${APPS_TO_INSTALL}" == *"salesix"* ]]; then
+    echo ""
+    echo "----------------------------------------------------------"
+    echo " Deploying Salesix..."
+    echo "----------------------------------------------------------"
+    bash "${SCRIPT_DIR}/setup-salesix.sh" "${EMAIL}"
 fi
 
 echo ""

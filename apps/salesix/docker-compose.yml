@@ -1,0 +1,202 @@
+# Salesix (sandbox) - prebuilt images from GHCR, fronted by the host nginx.
+# Images are built on a workstation with ./build-and-push.sh; nothing is built here.
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: salesix-postgres
+    restart: unless-stopped
+    env_file:
+      - backend.env
+    volumes:
+      - salesix-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 512m
+    logging: *default-logging
+    networks:
+      - salesix-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: salesix-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 96mb --maxmemory-policy noeviction --requirepass ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - salesix-redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 160m
+    logging: *default-logging
+    networks:
+      - salesix-network
+
+  backend:
+    image: ${GHCR_NAMESPACE:-ghcr.io/msvhora}/salesix-backend:${SALESIX_IMAGE_TAG:-latest}
+    container_name: salesix-backend
+    restart: unless-stopped
+    env_file:
+      - backend.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - salesix-recordings:/app/recordings
+    command: sh -c "npx prisma migrate deploy --schema=./src/database/prisma/schema.prisma && node dist/index.js"
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-3110}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    mem_limit: 1g
+    logging: *default-logging
+    networks:
+      - salesix-network
+
+  python-service:
+    image: ${GHCR_NAMESPACE:-ghcr.io/msvhora}/salesix-python-service:${SALESIX_IMAGE_TAG:-latest}
+    container_name: salesix-python-service
+    restart: unless-stopped
+    env_file:
+      - python-service.env
+    mem_limit: 1g
+    logging: *default-logging
+    networks:
+      - salesix-network
+
+  frontendv2:
+    image: ${GHCR_NAMESPACE:-ghcr.io/msvhora}/salesix-frontendv2:${SALESIX_IMAGE_TAG:-latest}
+    container_name: salesix-frontendv2
+    restart: unless-stopped
+    env_file:
+      - frontendv2.env
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3111}:3001"
+    healthcheck:
+      # the app listens on 3001 (the source sandbox compose probes 3000, which never answers)
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    mem_limit: 512m
+    logging: *default-logging
+    networks:
+      - salesix-network
+
+  landing:
+    image: ${GHCR_NAMESPACE:-ghcr.io/msvhora}/salesix-landing:${SALESIX_IMAGE_TAG:-latest}
+    container_name: salesix-landing
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:${LANDING_PORT:-3112}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    mem_limit: 512m
+    logging: *default-logging
+    networks:
+      - salesix-network
+
+  admin:
+    image: ${GHCR_NAMESPACE:-ghcr.io/msvhora}/salesix-admin:${SALESIX_IMAGE_TAG:-latest}
+    container_name: salesix-admin
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:${ADMIN_PORT:-3113}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    mem_limit: 512m
+    logging: *default-logging
+    networks:
+      - salesix-network
+
+  demo:
+    image: ${GHCR_NAMESPACE:-ghcr.io/msvhora}/salesix-demo:${SALESIX_IMAGE_TAG:-latest}
+    container_name: salesix-demo
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${DEMO_PORT:-3114}:80"
+    mem_limit: 64m
+    logging: *default-logging
+    networks:
+      - salesix-network
+
+  pitch:
+    image: ${GHCR_NAMESPACE:-ghcr.io/msvhora}/salesix-pitch:${SALESIX_IMAGE_TAG:-latest}
+    container_name: salesix-pitch
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PITCH_PORT:-3115}:80"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    mem_limit: 64m
+    logging: *default-logging
+    networks:
+      - salesix-network
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: salesix-n8n
+    restart: unless-stopped
+    environment:
+      N8N_HOST: n8n.salesix.ai
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: https
+      NODE_ENV: production
+      WEBHOOK_URL: https://n8n.salesix.ai/
+      GENERIC_TIMEZONE: Asia/Kolkata
+    volumes:
+      - salesix-n8n-data:/home/node/.n8n
+    ports:
+      - "127.0.0.1:${N8N_PORT:-3116}:5678"
+    mem_limit: 512m
+    logging: *default-logging
+    networks:
+      - salesix-network
+
+networks:
+  salesix-network:
+    driver: bridge
+
+volumes:
+  salesix-postgres-data:
+  salesix-redis-data:
+  salesix-recordings:
+  salesix-n8n-data:
