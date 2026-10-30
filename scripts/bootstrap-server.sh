@@ -15,7 +15,6 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 APPS_TO_INSTALL=""
 SOLIDTIME_DOMAIN=""
 IT_TOOLS_DOMAIN=""
-HOUM_DOMAIN=""
 LIFE_GAME_DOMAIN=""
 EMAIL=""
 
@@ -34,10 +33,6 @@ while [[ $# -gt 0 ]]; do
             IT_TOOLS_DOMAIN="$2"
             shift 2
             ;;
-        --houm-domain)
-            HOUM_DOMAIN="$2"
-            shift 2
-            ;;
         --life-game-domain)
             LIFE_GAME_DOMAIN="$2"
             shift 2
@@ -50,10 +45,9 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: sudo $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --apps <list>             Comma-separated list of apps to install ('all', 'solidtime', 'it-tools', 'houm', 'life-game', 'none')"
+            echo "  --apps <list>             Comma-separated list of apps to install ('all', 'solidtime', 'it-tools', 'life-game', 'none')"
             echo "  --solidtime-domain <dom>  Domain name for Solidtime (e.g., time.picmix.in)"
             echo "  --it-tools-domain <dom>   Domain name for IT-Tools (e.g., tools.picmix.in)"
-            echo "  --houm-domain <dom>       Domain name for the HOUM website (e.g., houm.picmix.in)"
             echo "  --life-game-domain <dom>  Domain name for Life Game (e.g., life.picmix.in)"
             echo "  --email <email>           Email address for Let's Encrypt / Certbot SSL registration"
             echo "  -h, --help                Show this help message"
@@ -92,27 +86,25 @@ if [ -z "${APPS_TO_INSTALL}" ]; then
         echo "=========================================================="
         echo " Select Applications to Deploy:"
         echo "=========================================================="
-        echo " 1) All Apps (Solidtime + IT-Tools + HOUM + Life Game)"
+        echo " 1) All Apps (Solidtime + IT-Tools + Life Game)"
         echo " 2) Solidtime (Time tracking & management)"
         echo " 3) IT-Tools (Developer & IT web utility suite)"
-        echo " 4) HOUM (Company website)"
-        echo " 5) Life Game (Daily deadline tracker)"
-        echo " 6) None (Core server stack only)"
+        echo " 4) Life Game (Daily deadline tracker)"
+        echo " 5) None (Core server stack only)"
         echo "=========================================================="
-        read -rp "Enter choice [1-6] (default: 1): " APP_CHOICE
+        read -rp "Enter choice [1-5] (default: 1): " APP_CHOICE
         APP_CHOICE="${APP_CHOICE:-1}"
 
         case "${APP_CHOICE}" in
-            1) APPS_TO_INSTALL="solidtime,it-tools,houm,life-game" ;;
+            1) APPS_TO_INSTALL="solidtime,it-tools,life-game" ;;
             2) APPS_TO_INSTALL="solidtime" ;;
             3) APPS_TO_INSTALL="it-tools" ;;
-            4) APPS_TO_INSTALL="houm" ;;
-            5) APPS_TO_INSTALL="life-game" ;;
-            6) APPS_TO_INSTALL="none" ;;
-            *) echo "Invalid choice, defaulting to all."; APPS_TO_INSTALL="solidtime,it-tools,houm,life-game" ;;
+            4) APPS_TO_INSTALL="life-game" ;;
+            5) APPS_TO_INSTALL="none" ;;
+            *) echo "Invalid choice, defaulting to all."; APPS_TO_INSTALL="solidtime,it-tools,life-game" ;;
         esac
     else
-        APPS_TO_INSTALL="solidtime,it-tools,houm,life-game"
+        APPS_TO_INSTALL="solidtime,it-tools,life-game"
     fi
 fi
 
@@ -143,18 +135,6 @@ if [[ "${APPS_TO_INSTALL}" == *"it-tools"* ]] || [[ "${APPS_TO_INSTALL}" == "all
     bash "${SCRIPT_DIR}/setup-it-tools.sh" "${IT_TOOLS_DOMAIN}" "${EMAIL}"
 fi
 
-# Deploy HOUM if selected
-if [[ "${APPS_TO_INSTALL}" == *"houm"* ]] || [[ "${APPS_TO_INSTALL}" == "all" ]]; then
-    echo ""
-    echo "----------------------------------------------------------"
-    echo " Deploying HOUM..."
-    echo "----------------------------------------------------------"
-    if [ -z "${HOUM_DOMAIN}" ] && [ -t 0 ]; then
-        read -rp "Enter domain for HOUM (e.g. houm.picmix.in, or press Enter to skip SSL): " HOUM_DOMAIN
-    fi
-    bash "${SCRIPT_DIR}/setup-houm.sh" "${HOUM_DOMAIN}" "${EMAIL}"
-fi
-
 # Deploy Life Game if selected
 if [[ "${APPS_TO_INSTALL}" == *"life-game"* ]] || [[ "${APPS_TO_INSTALL}" == "all" ]]; then
     echo ""
@@ -176,9 +156,6 @@ if [[ "${APPS_TO_INSTALL}" == *"solidtime"* ]] && [ -n "${SOLIDTIME_DOMAIN}" ]; 
 fi
 if [[ "${APPS_TO_INSTALL}" == *"it-tools"* ]] && [ -n "${IT_TOOLS_DOMAIN}" ]; then
     echo " IT-Tools:  https://${IT_TOOLS_DOMAIN}"
-fi
-if [[ "${APPS_TO_INSTALL}" == *"houm"* ]] && [ -n "${HOUM_DOMAIN}" ]; then
-    echo " HOUM:      https://${HOUM_DOMAIN}"
 fi
 if [[ "${APPS_TO_INSTALL}" == *"life-game"* ]] && [ -n "${LIFE_GAME_DOMAIN}" ]; then
     echo " Life Game: https://${LIFE_GAME_DOMAIN}"

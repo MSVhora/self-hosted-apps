@@ -6,7 +6,6 @@ A repository for managing Docker Compose stacks, Nginx reverse proxy configurati
 
 ```text
 ├── apps/
-│   ├── houm/                 # HOUM company website (Next.js image from GHCR)
 │   ├── life-game/            # Life Game daily deadline tracker (image from GHCR + Postgres)
 │   ├── it-tools/             # IT-Tools web utility suite (Text diff, hashes, converters, etc.)
 │   └── solidtime/            # Solidtime open-source time tracking stack
@@ -17,7 +16,6 @@ A repository for managing Docker Compose stacks, Nginx reverse proxy configurati
 │   ├── setup-nginx-domain.sh # Configures Nginx reverse proxy block & Let's Encrypt SSL
 │   ├── setup-solidtime.sh    # Automated Solidtime deployer
 │   ├── setup-it-tools.sh     # Automated IT-Tools deployer
-│   ├── setup-houm.sh         # Automated HOUM website deployer
 │   └── setup-life-game.sh    # Automated Life Game deployer
 ├── .gitignore
 └── README.md
@@ -41,7 +39,6 @@ sudo ./scripts/bootstrap-server.sh \
   --apps all \
   --solidtime-domain time.picmix.in \
   --it-tools-domain tools.picmix.in \
-  --houm-domain houm.picmix.in \
   --life-game-domain life.picmix.in \
   --email your-email@example.com
 
@@ -59,11 +56,6 @@ sudo ./scripts/bootstrap-server.sh \
 ### Deploy IT-Tools
 ```bash
 sudo ./scripts/setup-it-tools.sh tools.yourdomain.com your-email@example.com
-```
-
-### Deploy HOUM
-```bash
-sudo ./scripts/setup-houm.sh houm.yourdomain.com your-email@example.com
 ```
 
 ### Deploy Life Game
