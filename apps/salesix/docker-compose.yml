@@ -61,7 +61,7 @@ services:
     ports:
       - "127.0.0.1:${BACKEND_PORT:-3110}:3000"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -94,7 +94,7 @@ services:
       - "127.0.0.1:${FRONTEND_PORT:-3111}:3001"
     healthcheck:
       # the app listens on 3001 (the source sandbox compose probes 3000, which never answers)
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -110,10 +110,12 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      # the image doesn't set it, so Next.js would only bind to the container's own IP
+      HOSTNAME: 0.0.0.0
     ports:
       - "127.0.0.1:${LANDING_PORT:-3112}:3000"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -134,7 +136,7 @@ services:
     ports:
       - "127.0.0.1:${ADMIN_PORT:-3113}:3000"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -162,7 +164,7 @@ services:
     ports:
       - "127.0.0.1:${PITCH_PORT:-3115}:80"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/health"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -107,6 +107,16 @@ NGINX
     if [ -n "${EMAIL}" ]; then CERTBOT_ARGS+=(-m "${EMAIL}"); else CERTBOT_ARGS+=(--register-unsafely-without-email); fi
     certbot "${CERTBOT_ARGS[@]}"
     nginx -t && systemctl reload nginx
+
+    # Daily database backup to Google Cloud Storage (see apps/salesix/backup.sh)
+    chmod +x "${SALESIX_DIR}/backup.sh"
+    cat > /etc/cron.d/salesix-backup <<CRON
+# Salesix: daily Postgres backup to GCS at 02:00 server time
+PATH=/usr/local/bin:/usr/bin:/bin
+0 2 * * * root ${SALESIX_DIR}/backup.sh >> /var/log/salesix-backup.log 2>&1
+CRON
+    chmod 644 /etc/cron.d/salesix-backup
+    echo "Installed /etc/cron.d/salesix-backup (daily 02:00, log: /var/log/salesix-backup.log)"
 fi
 
 echo "=========================================================="
