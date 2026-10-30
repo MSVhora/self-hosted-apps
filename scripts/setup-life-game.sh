@@ -123,6 +123,18 @@ if [ -n "${DOMAIN}" ]; then
     bash "${SCRIPT_DIR}/setup-nginx-domain.sh" "${DOMAIN}" "${PORT}" "${EMAIL}"
 fi
 
+# 7. Nightly database backup to GCS (only when the bucket and key are configured in .env)
+if [ "$(id -u)" -eq 0 ] && [ -n "$(get_env GCS_BACKUP_BUCKET)" ] && [ -n "$(get_env GCS_CREDENTIALS_BASE64)" ]; then
+    chmod +x "${LIFE_GAME_DIR}/backup.sh"
+    cat > /etc/cron.d/life-game-backup <<CRON
+# Life Game: nightly Postgres backup to GCS at 03:15 server time
+PATH=/usr/local/bin:/usr/bin:/bin
+15 3 * * * root ${LIFE_GAME_DIR}/backup.sh >> /var/log/life-game-backup.log 2>&1
+CRON
+    chmod 644 /etc/cron.d/life-game-backup
+    echo "Installed /etc/cron.d/life-game-backup (daily 03:15, log: /var/log/life-game-backup.log)"
+fi
+
 echo "=========================================================="
 echo " Life Game setup finished successfully!"
 echo "=========================================================="

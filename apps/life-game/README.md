@@ -9,7 +9,7 @@ The Mac agent and the Android app send their data to this server; the web app is
 - [`docker-compose.yml`](docker-compose.yml): Runs the app (`ghcr.io/msvhora/life-game`) and its Postgres database.
 - [`.env.example`](.env.example): Environment template (port, image tag, public URL, secrets, optional Solidtime).
 - [`nginx-life-game.conf.example`](nginx-life-game.conf.example): Reverse proxy configuration for Nginx.
-- [`backup.sh`](backup.sh) / [`restore.sh`](restore.sh): Database dump (optionally to Google Drive with rclone) and restore.
+- [`backup.sh`](backup.sh) / [`restore.sh`](restore.sh): Database dump (optionally to Google Cloud Storage or, with rclone, Google Drive) and restore.
 - `config/`: Optional personal settings (`*.local.yml`, for example `clients.local.yml` with client rates). Anything missing falls back to the defaults built into the image. Local files in here are git-ignored.
 
 ---
@@ -67,12 +67,12 @@ Device tokens are part of the data, so the Mac agent and the phone app keep work
 
 ## Backups
 ```bash
-./backup.sh                       # writes backups/life-game-<time>.sql.gz
+./backup.sh                       # writes backups/life-game-<time>.sql.gz, then uploads it if configured
 ```
-For Google Drive, install and configure `rclone` (a remote called `gdrive`), then run with `BACKUP_TARGET=gdrive:life-game-backups ./backup.sh`. Nightly cron example:
-```cron
-15 3 * * * BACKUP_TARGET=gdrive:life-game-backups /path/to/self-hosted-apps/apps/life-game/backup.sh >> /var/log/life-game-backup.log 2>&1
-```
+Set `GCS_BACKUP_BUCKET` and `GCS_CREDENTIALS_BASE64` (a service-account key, base64) in `.env` and `backup.sh` also uploads to `gs://<bucket>/backups/`, checks the uploaded size, and deletes bucket copies older than 30 days (`RETENTION_DAYS`). `gcloud` runs in a container, so nothing is installed on the host. `scripts/setup-life-game.sh` installs a daily 03:15 cron entry (`/etc/cron.d/life-game-backup`, log `/var/log/life-game-backup.log`) when these are set.
+
+For Google Drive instead, configure `rclone` (a remote called `gdrive`) and run with `BACKUP_TARGET=gdrive:life-game-backups ./backup.sh`.
+
 Try `restore.sh` on a spare machine once before you rely on it.
 
 ## Freelance meter (optional)
